@@ -30,5 +30,10 @@ jobs:
       - name: run pipeline
         env:
           CAPSTONE_TEST: ${{ secrets.CAPSTONE_TEST }}
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          DAGSHUB_REPO_NAME: ${{ secrets.DAGSHUB_REPO_NAME }}
+          DAGSHUB_REPO_OWNER: ${{ secrets.DAGSHUB_REPO_OWNER }}
         run: |
           dvc repro

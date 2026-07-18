@@ -42,8 +42,20 @@ class TestModelLoading(unittest.TestCase):
     @staticmethod
     def get_latest_model_version(model_name, stage="Staging"):
         client = mlflow.MlflowClient()
-        latest_version = client.get_latest_versions(model_name, stages=[stage])
-        return latest_version[0].version if latest_version else None
+
+        # Map the old camelCase/Capitalized stages to lowercase aliases safely
+        alias_name = stage.lower()
+
+        try:
+            # Fetch the specific version assigned to this alias
+            model_version_details = client.get_model_version_by_alias(
+                name=model_name, alias=alias_name
+            )
+            return model_version_details.version
+
+        except mlflow.exceptions.MlflowException:
+            # Returns None if the alias doesn't exist yet for this model
+            return None
 
     def test_model_loaded_properly(self):
         self.assertIsNotNone(self.new_model)

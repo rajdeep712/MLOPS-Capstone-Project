@@ -21,25 +21,48 @@ def promote_model():
     mlflow.set_tracking_uri(f"{dagshub_url}/{repo_owner}/{repo_name}.mlflow")
 
     client = mlflow.MlflowClient()
-
     model_name = "my_model"
-    # Get the latest version in staging
-    latest_version_staging = client.get_latest_versions(model_name, stages=["Staging"])[
-        0
-    ].version
 
-    # Archive the current production model
-    prod_versions = client.get_latest_versions(model_name, stages=["Production"])
-    for version in prod_versions:
-        client.transition_model_version_stage(
-            name=model_name, version=version.version, stage="Archived"
+    try:
+        # 1. Get the version currently marked as 'staging'
+        staging_version_details = client.get_model_version_by_alias(
+            model_name, alias="staging"
         )
+        target_version = staging_version_details.version
+    except mlflow.exceptions.MlflowException:
+        print(
+            f"No model version found with alias 'staging' for {model_name}. Aborting promotion."
+        )
+        return
 
-    # Promote the new model to production
-    client.transition_model_version_stage(
-        name=model_name, version=latest_version_staging, stage="Production"
+    # 2. Find the current production model and archive it
+    try:
+        current_prod_details = client.get_model_version_by_alias(
+            model_name, alias="production"
+        )
+        old_prod_version = current_prod_details.version
+
+        # Remove the production alias from it
+        client.delete_registered_model_alias(name=model_name, alias="production")
+
+        # Explicitly tag it as archived so you don't lose track of past deployment states
+        client.set_model_version_tag(
+            name=model_name, version=old_prod_version, key="lifecycle", value="archived"
+        )
+        print(f"Archived previous production model (Version {old_prod_version})")
+    except mlflow.exceptions.MlflowException:
+        # This blocks triggers smoothly if there is no current production model
+        print("No existing production model found to archive.")
+
+    # 3. Promote the staging model to production
+    client.set_registered_model_alias(
+        name=model_name, alias="production", version=target_version
     )
-    print(f"Model version {latest_version_staging} promoted to Production")
+
+    # 4. Clean up the staging alias since it's now in production
+    client.delete_registered_model_alias(name=model_name, alias="staging")
+
+    print(f"Model version {target_version} successfully promoted to Production!")
 
 
 if __name__ == "__main__":

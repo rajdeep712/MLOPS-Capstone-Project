@@ -16,6 +16,7 @@ from nltk.corpus import stopwords
 import string
 import re
 import dagshub
+import numpy as np
 
 import warnings
 from dotenv import load_dotenv

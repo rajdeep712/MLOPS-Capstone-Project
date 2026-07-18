@@ -148,22 +148,12 @@ PREDICTION_COUNT = Counter(
 model_name = "my_model"
 
 
-def get_latest_model_version(model_name, stage="Staging"):
+def get_latest_model_version(model_name):
     client = mlflow.MlflowClient()
-
-    # Map the old camelCase/Capitalized stages to lowercase aliases safely
-    alias_name = stage.lower()
-
-    try:
-        # Fetch the specific version assigned to this alias
-        model_version_details = client.get_model_version_by_alias(
-            name=model_name, alias=alias_name
-        )
-        return model_version_details.version
-
-    except mlflow.exceptions.MlflowException:
-        # Returns None if the alias doesn't exist yet for this model
-        return None
+    latest_version = client.get_latest_versions(model_name, stages=["Production"])
+    if not latest_version:
+        latest_version = client.get_latest_versions(model_name, stages=["None"])
+    return latest_version[0].version if latest_version else None
 
 
 model_version = get_latest_model_version(model_name)
